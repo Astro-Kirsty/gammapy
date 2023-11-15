@@ -120,7 +120,12 @@ class Prior(ModelBase):
                     ):
                         del par[item]
 
-        data = {"type": tag, "parameters": params, "weight": self.weight}
+        data = {
+            "type": tag,
+            "parameters": params,
+            "weight": self.weight,
+            "modelparameters": self._modelparameters,
+        }
 
         if self.type is None:
             return data
@@ -135,16 +140,25 @@ class Prior(ModelBase):
         key0 = next(iter(data))
         if key0 in ["prior"]:
             data = data[key0]
-        if data["type"] not in cls.tag:
+
+        prior_cls = PRIOR_REGISTRY.get_cls(data)
+
+        print("in from dict from prior")
+        kwargs = {}
+        print("prior_cls ", prior_cls)
+
+        if data["type"] not in prior_cls.tag:
             raise ValueError(
                 f"Invalid model type {data['type']} for class {cls.__name__}"
             )
-
+        print("cls.default_parameters.names", cls.default_parameters.names)
         priorparameters = _build_priorparameters_from_dict(
-            data["parameters"], cls.default_parameters
+            data["parameters"], prior_cls.default_parameters
         )
         kwargs["weight"] = data["weight"]
-        return cls.from_parameters(priorparameters, **kwargs)
+        kwargs["modelparameters"] = data["modelparameters"]
+
+        return prior_cls.from_parameters(priorparameters, **kwargs)
 
 
 class GaussianPrior(Prior):
